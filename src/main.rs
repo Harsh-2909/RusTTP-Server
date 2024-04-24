@@ -13,22 +13,21 @@ fn handle_client(mut stream: TcpStream) {
     println!("Path: {}", path);
 
     // Writing the response
+    stream.write(route_handler(path).as_bytes()).unwrap();
+}
+
+fn route_handler(path: &str) -> String {
     match path {
-        "/" => {
-            stream.write(b"HTTP/1.1 200 OK\r\n\r\n").unwrap();
-        }
+        "/" => "HTTP/1.1 200 OK\r\n\r\n".to_string(),
         path if path.starts_with("/echo") => {
             let query = &path[6..];
             let query_len = query.len();
-            let response = format!(
+            format!(
                 "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}",
                 query_len, query
-            );
-            stream.write(response.as_bytes()).unwrap();
+            )
         }
-        _ => {
-            stream.write(b"HTTP/1.1 404 Not Found\r\n\r\n").unwrap();
-        }
+        _ => "HTTP/1.1 404 Not Found\r\n\r\n".to_string(),
     }
 }
 
