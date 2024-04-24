@@ -17,6 +17,15 @@ fn handle_client(mut stream: TcpStream) {
         "/" => {
             stream.write(b"HTTP/1.1 200 OK\r\n\r\n").unwrap();
         }
+        path if path.starts_with("/echo") => {
+            let query = &path[6..];
+            let query_len = query.len();
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}",
+                query_len, query
+            );
+            stream.write(response.as_bytes()).unwrap();
+        }
         _ => {
             stream.write(b"HTTP/1.1 404 Not Found\r\n\r\n").unwrap();
         }
