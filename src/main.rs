@@ -19,11 +19,15 @@ fn handle_client(mut stream: TcpStream, directory: String) {
     println!("  Body: {}", body);
 
     // Writing the response
-    let response = route_handler(path, &headers, directory);
+    let response = route_handler(&http_request, directory);
     stream.write(response.as_bytes()).unwrap();
 }
 
-fn route_handler(path: &str, headers: &HashMap<String, String>, directory: String) -> String {
+fn route_handler(http_request: &HttpRequest, directory: String) -> String {
+    let method = http_request.method.as_str();
+    let path = http_request.path.as_str();
+    let headers = &http_request.headers;
+
     let response: String = match path {
         "/" => "HTTP/1.1 200 OK\r\n\r\n".to_string(),
 
@@ -49,15 +53,25 @@ fn route_handler(path: &str, headers: &HashMap<String, String>, directory: Strin
         path if path.starts_with("/files") => {
             let file_path = &path[7..];
             let file_path = format!("{}/{}", directory, file_path);
-            match std::fs::read_to_string(file_path) {
-                Ok(content) => {
-                    let content_len = content.len();
-                    format!(
-                        "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\n\r\n{}",
-                        content_len, content
-                    )
+            if method == "GET" {
+                match std::fs::read_to_string(file_path) {
+                    Ok(content) => {
+                        let content_len = content.len();
+                        format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\n\r\n{}",
+                            content_len, content
+                        )
+                    }
+                    Err(_) => "HTTP/1.1 404 Not Found\r\n\r\n".to_string(),
                 }
-                Err(_) => "HTTP/1.1 404 Not Found\r\n\r\n".to_string(),
+            } else if method == "POST" {
+                let body = http_request.body.as_str();
+                match std::fs::write(file_path, body) {
+                    Ok(_) => "HTTP/1.1 201 Created\r\n\r\n".to_string(),
+                    Err(_) => "HTTP/1.1 500 Internal Server Error\r\n\r\n".to_string(),
+                }
+            } else {
+                "HTTP/1.1 405 Method Not Allowed\r\n\r\n".to_string()
             }
         }
 
