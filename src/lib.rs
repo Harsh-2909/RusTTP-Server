@@ -72,7 +72,7 @@ impl HttpRequest {
         // Reading the HTTP request from the stream
         let mut buffer = [0; 2048];
         stream.read(&mut buffer).unwrap();
-        let request_str = std::str::from_utf8(&buffer).unwrap();
+        let request_str = String::from_utf8_lossy(&buffer).to_string();
 
         // Parsing the request and building the HttpRequest object
         let method: &str = request_str.split_ascii_whitespace().next().unwrap();
@@ -85,7 +85,7 @@ impl HttpRequest {
             .split("\r\n\r\n")
             .nth(1)
             .unwrap_or_default()
-            .to_string();
+            .replace("\0", ""); // Remove escape null characters
 
         Self::new(
             method,

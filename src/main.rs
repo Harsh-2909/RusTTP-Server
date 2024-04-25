@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use std::thread;
@@ -16,7 +15,7 @@ fn handle_client(mut stream: TcpStream, directory: String) {
     // Logging the request
     println!("\nStarted {} \"{}\"", method, path);
     println!("  Headers: {:?}", headers);
-    println!("  Body: {}", body);
+    println!("  Body: {:?}", body);
 
     // Writing the response
     let response = route_handler(&http_request, directory);
