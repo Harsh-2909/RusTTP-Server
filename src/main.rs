@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::thread;
 
 fn handle_client(mut stream: TcpStream) {
     // Reading the HTTP request
@@ -81,8 +82,9 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
-                println!("\naccepted new connection");
-                handle_client(stream);
+                thread::spawn(move || {
+                    handle_client(stream);
+                });
             }
             Err(e) => {
                 println!("error: {}", e);
