@@ -45,6 +45,20 @@ fn route_handler(path: &str, headers: &HashMap<String, String>) -> String {
             )
         }
 
+        path if path.starts_with("/files") => {
+            let file_path = &path[7..];
+            match std::fs::read_to_string(file_path) {
+                Ok(content) => {
+                    let content_len = content.len();
+                    format!(
+                        "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\n\r\n{}",
+                        content_len, content
+                    )
+                }
+                Err(_) => "HTTP/1.1 404 Not Found\r\n\r\n".to_string(),
+            }
+        }
+
         _ => "HTTP/1.1 404 Not Found\r\n\r\n".to_string(),
     };
     response
