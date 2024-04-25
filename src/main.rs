@@ -1,51 +1,25 @@
 use std::collections::HashMap;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 
-fn handle_client(mut stream: TcpStream) {
-    // Reading the HTTP request
-    let mut buffer = [0; 2048];
-    stream.read(&mut buffer).unwrap();
-    let request_str = std::str::from_utf8(&buffer).unwrap();
-    // println!("Request: {}", request_str);
+use http_server_starter_rust::HttpRequest;
 
-    // Parsing the request and finding the path
-    let method: &str = request_str.split_ascii_whitespace().next().unwrap();
-    let path: &str = request_str.split_ascii_whitespace().nth(1).unwrap();
-    let headers: HashMap<String, String> = header_parser(request_str);
-    println!("Started {method} \"{path}\"", method = method, path = path);
+fn handle_client(mut stream: TcpStream) {
+    let http_request = HttpRequest::build(&stream);
+    let method = http_request.method.as_str();
+    let path = http_request.path.as_str();
+    let headers = &http_request.headers;
+    let body = http_request.body.as_str();
+
+    // Logging the request
+    println!("\nStarted {} \"{}\"", method, path);
     println!("  Headers: {:?}", headers);
+    println!("  Body: {}", body);
 
     // Writing the response
     let response = route_handler(path, &headers);
     stream.write(response.as_bytes()).unwrap();
-}
-
-#[warn(dead_code)]
-fn header_builder(headers: HashMap<String, String>) -> String {
-    let mut header_str = String::new();
-    for (key, value) in headers {
-        header_str.push_str(&format!("{}: {}\r\n", key, value));
-    }
-    header_str
-}
-
-fn header_parser(header_str: &str) -> HashMap<String, String> {
-    let mut headers: HashMap<String, String> = HashMap::new();
-    header_str.lines().for_each(|line| {
-        if line.is_empty() {
-            return;
-        }
-        let mut parts = line.split(": ");
-        let key = parts.next().unwrap_or_default();
-        let value = parts.next().unwrap_or_default();
-        if key.is_empty() || value.is_empty() {
-            return;
-        }
-        headers.insert(key.to_string(), value.to_string());
-    });
-    headers
 }
 
 fn route_handler(path: &str, headers: &HashMap<String, String>) -> String {
