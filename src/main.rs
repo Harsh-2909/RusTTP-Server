@@ -2,7 +2,7 @@ use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 use std::thread;
 
-use http_server_starter_rust::HttpRequest;
+use http_server_starter_rust::{HttpRequest, HttpResponse};
 use std::env;
 
 fn handle_client(mut stream: TcpStream, directory: String) {
@@ -28,25 +28,34 @@ fn route_handler(http_request: &HttpRequest, directory: String) -> String {
     let headers = &http_request.headers;
 
     let response: String = match path {
-        "/" => "HTTP/1.1 200 OK\r\n\r\n".to_string(),
+        "/" => HttpResponse::builder()
+            .status_code(200)
+            .status_text("OK")
+            .body("Hello, World!")
+            .build(),
 
         path if path.starts_with("/echo") => {
             let query = &path[6..];
             let query_len = query.len();
-            format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}",
-                query_len, query
-            )
+            HttpResponse::builder()
+                .status_code(200)
+                .status_text("OK")
+                .body(query)
+                .add_header("Content-Type", "text/plain")
+                .add_header("Content-Length", query_len.to_string().as_str())
+                .build()
         }
 
         "/user-agent" => {
             let default_user_agent = "Unknown".to_string();
             let user_agent = headers.get("User-Agent").unwrap_or(&default_user_agent);
-            format!(
-                "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: {}\r\n\r\n{}",
-                user_agent.len(),
-                user_agent
-            )
+            HttpResponse::builder()
+                .status_code(200)
+                .status_text("OK")
+                .body(user_agent)
+                .add_header("Content-Type", "text/plain")
+                .add_header("Content-Length", user_agent.len().to_string().as_str())
+                .build()
         }
 
         path if path.starts_with("/files") => {

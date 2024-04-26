@@ -1,5 +1,7 @@
 use std::io::Read;
 use std::{collections::HashMap, net::TcpStream};
+
+#[derive(Debug)]
 pub enum HttpMethod {
     GET,
     POST,
@@ -43,6 +45,7 @@ impl HttpMethod {
     }
 }
 
+#[derive(Debug)]
 pub struct HttpRequest {
     pub method: HttpMethod,
     pub path: String,
@@ -97,11 +100,86 @@ impl HttpRequest {
     }
 }
 
+#[derive(Debug)]
+pub struct HttpResponse {
+    pub status_code: u16,
+    pub status_text: String,
+    pub headers: HashMap<String, String>,
+    pub body: String,
+    pub http_version: String,
+}
+
+impl HttpResponse {
+    pub fn new(
+        status_code: u16,
+        status_text: String,
+        headers: HashMap<String, String>,
+        body: String,
+        http_version: String,
+    ) -> Self {
+        Self {
+            status_code,
+            status_text,
+            headers,
+            body,
+            http_version,
+        }
+    }
+
+    pub fn builder() -> Self {
+        Self {
+            status_code: 200,
+            status_text: "OK".to_string(),
+            headers: HashMap::new(),
+            body: String::new(),
+            http_version: "HTTP/1.1".to_string(),
+        }
+    }
+
+    pub fn status_code(&mut self, status_code: u16) -> &mut Self {
+        self.status_code = status_code;
+        self
+    }
+
+    pub fn status_text(&mut self, status_text: &str) -> &mut Self {
+        self.status_text = status_text.to_string();
+        self
+    }
+
+    pub fn body(&mut self, body: &str) -> &mut Self {
+        self.body = body.to_string();
+        self
+    }
+
+    pub fn headers(&mut self, headers: HashMap<String, String>) -> &mut Self {
+        self.headers = headers;
+        self
+    }
+
+    pub fn add_header(&mut self, key: &str, value: &str) -> &mut Self {
+        self.headers.insert(key.to_string(), value.to_string());
+        self
+    }
+
+    pub fn build(&self) -> String {
+        let header_str = header_builder(self.headers.clone());
+        format!("{}{}{}", self.status_line(), header_str, self.body)
+    }
+
+    pub fn status_line(&self) -> String {
+        format!(
+            "{} {} {}\r\n",
+            self.http_version, self.status_code, self.status_text
+        )
+    }
+}
+
 pub fn header_builder(headers: HashMap<String, String>) -> String {
     let mut header_str = String::new();
     for (key, value) in headers {
         header_str.push_str(&format!("{}: {}\r\n", key, value));
     }
+    header_str.push_str("\r\n");
     header_str
 }
 
