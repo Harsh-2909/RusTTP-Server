@@ -11,9 +11,15 @@ fn handle_client(mut stream: TcpStream, directory: String) {
     let path = http_request.path.as_str();
     let headers = &http_request.headers;
     let body = http_request.body.as_str();
+    let query_string = http_request.query_string();
+
+    let mut log_string = format!("Started {} {}", method, path);
+    if !query_string.is_empty() {
+        log_string.push_str(format!("?{}", query_string).as_str());
+    }
 
     // Logging the request
-    println!("\nStarted {} \"{}\"", method, path);
+    println!("\n{}", log_string);
     println!("  Headers: {:?}", headers);
     println!("  Body: {:?}", body);
 
@@ -97,7 +103,7 @@ fn main() {
             directory = args.next().unwrap();
         }
     }
-    println!("directory: {}", directory);
+    // println!("directory: {}", directory);
 
     let port = 4221;
     let address = format!("127.0.0.1:{}", port);

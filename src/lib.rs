@@ -58,6 +58,7 @@ impl HttpRequest {
     pub fn new(
         method: HttpMethod,
         path: String,
+        query_params: HashMap<String, String>,
         http_version: String,
         headers: HashMap<String, String>,
         body: String,
@@ -65,6 +66,7 @@ impl HttpRequest {
         Self {
             method,
             path,
+            query_params,
             http_version,
             headers,
             body,
@@ -80,7 +82,20 @@ impl HttpRequest {
         // Parsing the request and building the HttpRequest object
         let method: &str = request_str.split_ascii_whitespace().next().unwrap();
         let method: HttpMethod = HttpMethod::from_str(method);
-        let path: &str = request_str.split_ascii_whitespace().nth(1).unwrap();
+        let full_path: &str = request_str.split_ascii_whitespace().nth(1).unwrap();
+        let path: &str = full_path.split('?').next().unwrap();
+        let query_params: HashMap<String, String> = full_path
+            .split('?')
+            .nth(1)
+            .unwrap_or_default()
+            .split('&')
+            .map(|param| {
+                let mut parts = param.split('=');
+                let key = parts.next().unwrap_or_default();
+                let value = parts.next().unwrap_or_default();
+                (key.to_string(), value.to_string())
+            })
+            .collect();
         let http_version: &str = request_str.split_ascii_whitespace().nth(2).unwrap();
         let header_str: &str = request_str.split("\r\n\r\n").next().unwrap();
         let headers: HashMap<String, String> = header_parser(header_str);
@@ -93,10 +108,25 @@ impl HttpRequest {
         Self::new(
             method,
             path.to_string(),
+            query_params,
             http_version.to_string(),
             headers,
             body,
         )
+    }
+
+    pub fn query_string(&self) -> String {
+        self.query_params
+            .iter()
+            .map(|(key, value)| {
+                if !key.is_empty() && !value.is_empty() {
+                    format!("{}={}", key, value)
+                } else {
+                    String::new()
+                }
+            })
+            .collect::<Vec<String>>()
+            .join("&")
     }
 }
 
