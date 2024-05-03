@@ -36,7 +36,6 @@ fn route_handler(http_request: &HttpRequest, directory: String) -> String {
     let response: String = match path {
         "/" => HttpResponse::builder()
             .status_code(200)
-            .status_text("OK")
             .body("Hello, World!")
             .build(),
 
@@ -45,7 +44,6 @@ fn route_handler(http_request: &HttpRequest, directory: String) -> String {
             let query_len = query.len();
             HttpResponse::builder()
                 .status_code(200)
-                .status_text("OK")
                 .body(query)
                 .add_header("Content-Type", "text/plain")
                 .add_header("Content-Length", query_len.to_string().as_str())
@@ -57,7 +55,6 @@ fn route_handler(http_request: &HttpRequest, directory: String) -> String {
             let user_agent = headers.get("User-Agent").unwrap_or(&default_user_agent);
             HttpResponse::builder()
                 .status_code(200)
-                .status_text("OK")
                 .body(user_agent)
                 .add_header("Content-Type", "text/plain")
                 .add_header("Content-Length", user_agent.len().to_string().as_str())
@@ -69,27 +66,26 @@ fn route_handler(http_request: &HttpRequest, directory: String) -> String {
             let file_path = format!("{}/{}", directory, file_path);
             if method == "GET" {
                 match std::fs::read_to_string(file_path) {
-                    Ok(content) => {
-                        let content_len = content.len();
-                        format!(
-                            "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: {}\r\n\r\n{}",
-                            content_len, content
-                        )
-                    }
-                    Err(_) => "HTTP/1.1 404 Not Found\r\n\r\n".to_string(),
+                    Ok(content) => HttpResponse::builder()
+                        .status_code(200)
+                        .body(content.as_str())
+                        .add_header("Content-Type", "application/octet-stream")
+                        .add_header("Content-Length", content.len().to_string().as_str())
+                        .build(),
+                    Err(_) => HttpResponse::builder().status_code(404).build(),
                 }
             } else if method == "POST" {
                 let body = http_request.body.as_str();
                 match std::fs::write(file_path, body) {
-                    Ok(_) => "HTTP/1.1 201 Created\r\n\r\n".to_string(),
-                    Err(_) => "HTTP/1.1 500 Internal Server Error\r\n\r\n".to_string(),
+                    Ok(_) => HttpResponse::builder().status_code(201).build(),
+                    Err(_) => HttpResponse::builder().status_code(500).build(),
                 }
             } else {
-                "HTTP/1.1 405 Method Not Allowed\r\n\r\n".to_string()
+                HttpResponse::builder().status_code(405).build()
             }
         }
 
-        _ => "HTTP/1.1 404 Not Found\r\n\r\n".to_string(),
+        _ => HttpResponse::builder().status_code(404).build(),
     };
     response
 }
@@ -103,7 +99,6 @@ fn main() {
             directory = args.next().unwrap();
         }
     }
-    // println!("directory: {}", directory);
 
     let port = 4221;
     let address = format!("127.0.0.1:{}", port);

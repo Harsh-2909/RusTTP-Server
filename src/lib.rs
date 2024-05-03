@@ -1,5 +1,83 @@
+use phf::phf_map;
 use std::io::Read;
 use std::{collections::HashMap, net::TcpStream};
+
+static HTTP_RESPONSE_CODES: phf::Map<u16, &'static str> = phf_map! {
+    // Informational
+    100u16 => "Continue",
+    101u16 => "Switching Protocols",
+    102u16 => "Processing",
+    103u16 => "Early Hints",
+    // Success
+    200u16 => "OK",
+    201u16 => "Created",
+    202u16 => "Accepted",
+    203u16 => "Non-Authoritative Information",
+    204u16 => "No Content",
+    205u16 => "Reset Content",
+    206u16 => "Partial Content",
+    207u16 => "Multi-Status",
+    208u16 => "Already Reported",
+    226u16 => "IM Used",
+    // Redirection
+    300u16 => "Multiple Choices",
+    301u16 => "Moved Permanently",
+    302u16 => "Found",
+    303u16 => "See Other",
+    304u16 => "Not Modified",
+    305u16 => "Use Proxy",
+    306u16 => "Switch Proxy",
+    307u16 => "Temporary Redirect",
+    308u16 => "Permanent Redirect",
+    // Client Error
+    400u16 => "Bad Request",
+    401u16 => "Unauthorized",
+    402u16 => "Payment Required",
+    403u16 => "Forbidden",
+    404u16 => "Not Found",
+    405u16 => "Method Not Allowed",
+    406u16 => "Not Acceptable",
+    407u16 => "Proxy Authentication Required",
+    408u16 => "Request Timeout",
+    409u16 => "Conflict",
+    410u16 => "Gone",
+    411u16 => "Length Required",
+    412u16 => "Precondition Failed",
+    413u16 => "Payload Too Large",
+    414u16 => "URI Too Long",
+    415u16 => "Unsupported Media Type",
+    416u16 => "Range Not Satisfiable",
+    417u16 => "Expectation Failed",
+    418u16 => "I'm a teapot",
+    421u16 => "Misdirected Request",
+    422u16 => "Unprocessable Entity",
+    423u16 => "Locked",
+    424u16 => "Failed Dependency",
+    425u16 => "Too Early",
+    426u16 => "Upgrade Required",
+    428u16 => "Precondition Required",
+    429u16 => "Too Many Requests",
+    431u16 => "Request Header Fields Too Large",
+    444u16 => "No Response",
+    449u16 => "Retry With",
+    450u16 => "Blocked by Windows Parental Controls",
+    451u16 => "Unavailable For Legal Reasons",
+    499u16 => "Client Closed Request",
+    // Server Error
+    500u16 => "Internal Server Error",
+    501u16 => "Not Implemented",
+    502u16 => "Bad Gateway",
+    503u16 => "Service Unavailable",
+    504u16 => "Gateway Timeout",
+    505u16 => "HTTP Version Not Supported",
+    506u16 => "Variant Also Negotiates",
+    507u16 => "Insufficient Storage",
+    508u16 => "Loop Detected",
+    510u16 => "Not Extended",
+    511u16 => "Network Authentication Required",
+    598u16 => "Network read timeout error",
+    599u16 => "Network connect timeout error",
+};
 
 #[derive(Debug)]
 pub enum HttpMethod {
@@ -49,6 +127,7 @@ impl HttpMethod {
 pub struct HttpRequest {
     pub method: HttpMethod,
     pub path: String,
+    pub query_params: HashMap<String, String>,
     pub http_version: String,
     pub headers: HashMap<String, String>,
     pub body: String,
@@ -133,10 +212,10 @@ impl HttpRequest {
 #[derive(Debug)]
 pub struct HttpResponse {
     pub status_code: u16,
-    pub status_text: String,
+    status_text: String,
     pub headers: HashMap<String, String>,
     pub body: String,
-    pub http_version: String,
+    http_version: String,
 }
 
 impl HttpResponse {
@@ -159,7 +238,7 @@ impl HttpResponse {
     pub fn builder() -> Self {
         Self {
             status_code: 200,
-            status_text: "OK".to_string(),
+            status_text: HTTP_RESPONSE_CODES.get(&200).unwrap().to_string(),
             headers: HashMap::new(),
             body: String::new(),
             http_version: "HTTP/1.1".to_string(),
@@ -168,11 +247,10 @@ impl HttpResponse {
 
     pub fn status_code(&mut self, status_code: u16) -> &mut Self {
         self.status_code = status_code;
-        self
-    }
-
-    pub fn status_text(&mut self, status_text: &str) -> &mut Self {
-        self.status_text = status_text.to_string();
+        self.status_text = HTTP_RESPONSE_CODES
+            .get(&status_code)
+            .unwrap_or(&"Unknown Status Code")
+            .to_string();
         self
     }
 
@@ -191,6 +269,10 @@ impl HttpResponse {
         self
     }
 
+    pub fn init(&self) -> &Self {
+        self
+    }
+
     pub fn build(&self) -> String {
         let header_str = header_builder(self.headers.clone());
         format!("{}{}{}", self.status_line(), header_str, self.body)
@@ -201,6 +283,10 @@ impl HttpResponse {
             "{} {} {}\r\n",
             self.http_version, self.status_code, self.status_text
         )
+    }
+
+    pub fn status(&self) -> String {
+        format!("{} {}", self.status_code, self.status_text)
     }
 }
 
